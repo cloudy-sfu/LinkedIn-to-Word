@@ -5,7 +5,6 @@ from urllib.parse import urlparse, parse_qs
 letter_case_formatter = [
     "ORCID", "GitHub", "LinkedIn", "TikTok", "YouTube", "ResearchGate", "SoundCloud",
 ]
-letter_case_formatter = {v.capitalize(): v for v in letter_case_formatter}
 
 
 def format_domain(domain):
@@ -15,7 +14,10 @@ def format_domain(domain):
     if domain_parts[0] == 'www':
         domain_parts.pop(0)
     domain_ = domain_parts[0].capitalize()
-    domain_ = letter_case_formatter.get(domain_, domain_)
+    for domain_1 in letter_case_formatter:
+        domain_1_capitalize = domain_1.capitalize()
+        if domain_ == domain_1_capitalize:
+            domain_ = domain_1
     return domain_
 
 

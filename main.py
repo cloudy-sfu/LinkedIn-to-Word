@@ -4,9 +4,9 @@ from argparse import ArgumentParser
 
 from docx.opc.exceptions import PackageNotFoundError
 from docxtpl import DocxTemplate
-from requests import Session
+from linkdapi import LinkdAPI
 
-from universities import search_university, get_universities_list
+from universities import SearchUniversity
 from websites import convert_url
 from jinja2 import Environment
 
@@ -16,40 +16,23 @@ parser.add_argument("--linkdapi_key", required=True)
 parser.add_argument("--profile_id", required=True)
 parser.add_argument("--template", default="resume.docx")
 cmd, _ = parser.parse_known_args()
-linkdapi_key = cmd.linkdapi_key
-profile_id = cmd.profile_id
-template_filename = cmd.template
 
 # %% Initialization.
-session = Session()
 os.makedirs("profiles", exist_ok=True)
+client = LinkdAPI(api_key=cmd.linkdapi_key)
 
 # %% Get profile.
-response = session.get(
-    url="https://linkdapi.com/api/v1/profile/username-to-urn",
-    headers={"x-linkdapi-apikey": linkdapi_key},
-    params={"username": profile_id}
-)
-response.raise_for_status()
-urn = response.json()['data']['urn']
-
-response = session.get(
-    url="https://linkdapi.com/api/v1/profile/full",
-    headers={"x-linkdapi-apikey": linkdapi_key},
-    params={"username": profile_id, "urn": urn}
-)
-response.raise_for_status()
-profile = response.json()['data']
+profile = client.get_full_profile(username=cmd.profile_id)['data']
 
 # %% Pre-processing.
 # Add school's country
-universities_list = get_universities_list()
+search_engine = SearchUniversity()
 for education in profile['educations']:
-    school_info = search_university(education['schoolName'], universities_list)
+    school_info = search_engine.search_university(education['schoolName'])
     education['country'] = school_info.get("country", "")
 # Aggregate roles of the same company
 companies = {}
-for position in profile['position']:
+for position in profile['fullPositions']:
     employer = {}
     role = {}
     for k, v in position.items():
@@ -58,23 +41,18 @@ for position in profile['position']:
         else:
             role[k] = v
     company_id = position["companyId"]
+    employer['country'] = position['location'].split(',')[-1].strip()
     if company_id in companies.keys():
         companies[company_id]['roles'].append(role)
     else:
         companies[company_id] = employer
         companies[company_id]['roles'] = [role]
-profile['position'] = companies
+profile['fullPositions'] = companies
 
 # %% Add contact information.
-response = session.get(
-    url="https://linkdapi.com/api/v1/profile/contact-info",
-    headers={"x-linkdapi-apikey": linkdapi_key},
-    params={"username": profile_id}
-)
-response.raise_for_status()
-contact_info = response.json()['data']
+contact_info = client.get_contact_info(cmd.profile_id)['data']
 profile.update(contact_info)
-with open(os.path.join("profiles", profile_id + ".json"), "w") as f:
+with open(os.path.join("profiles", cmd.profile_id + ".json"), "w") as f:
     json.dump(profile, f)
 
 # %% Customized rendering function.
@@ -110,7 +88,7 @@ env.filters['concat_date'] = concat_date
 env.filters['convert_url'] = convert_url
 
 # %% Render.
-resume = DocxTemplate(os.path.join("templates", template_filename))
+resume = DocxTemplate(os.path.join("templates", cmd.template))
 # If template is not valid: PackageNotFoundError
 try:
     resume.render(profile, jinja_env=env)
@@ -121,4 +99,4 @@ for paragraph in resume.paragraphs:  # remove empty paragraphs
         p = paragraph._element
         p.getparent().remove(p)
         p._p = p._element = None
-resume.save(os.path.join("profiles", profile_id + ".docx"))
+resume.save(os.path.join("profiles", cmd.profile_id + ".docx"))

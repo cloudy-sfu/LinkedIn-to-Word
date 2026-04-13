@@ -6,7 +6,7 @@ Generate resume in Microsoft Word format by information in LinkedIn profile
 
 ## Acknowledgement
 
-This program relies on commercial service of https://linkdapi.com/ Each resume costs 3 credits (0.03 USD, checked April 2026, first 100 credits free).
+This program relies on commercial service of https://linkdapi.com/ Each resume costs 2 credits (0.02 USD, checked April 2026, first 100 credits free).
 
 ## Install
 
