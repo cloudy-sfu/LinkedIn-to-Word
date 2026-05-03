@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the following command with arguments. [POSIX format](https://gist.github.com/cloudy-sfu/dce5106496125096092c7a7cc7846f7b)
+Run the following command with arguments.
 
 ```
 python main.py
